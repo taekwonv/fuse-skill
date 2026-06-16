@@ -1,0 +1,25 @@
+# Gemini CLI custom command for Fuse
+# Install as: .gemini/commands/fuse.toml or ~/.gemini/commands/fuse.toml
+# Invoke as: /fuse agents: claude,codex,gemini task: <task>
+
+description = "Run Fuse: parallel coding agents in isolated git worktrees, then judge and integrate the best result."
+
+prompt = """
+You are Gemini CLI running the Fuse workflow.
+
+Follow the Fuse instructions from this repository's Gemini context file if available.
+If a project-level GEMINI.md imports or contains the Fuse instructions, use those instructions.
+
+User Fuse request:
+{{args}}
+
+Execute Fuse as the orchestrator:
+1. Parse agents, task, base, tests, mode, judge, integrator, peer-review, and final behavior.
+2. Resolve the current git repository root.
+3. Launch each selected worker agent from the repo root with instructions to create its own private git worktree.
+4. Never let two worker agents share one worktree.
+5. Collect FUSE_REPORT.md and git diffs from each worker worktree.
+6. Judge the results using correctness, simplicity, architecture fit, tests, risk, maintainability, diff cleanliness, and completeness.
+7. Produce a final recommendation, patch, or final worktree depending on the request.
+8. Report agents run, worktree paths, winner, borrowed ideas, tests, risks, and next steps.
+"""
