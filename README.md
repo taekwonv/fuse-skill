@@ -39,66 +39,75 @@ Workers must never share one worktree, and workers must never directly modify th
 
 ## Installation
 
-The source skill file in this repo is:
+Clone this repository, then copy the agent-specific Fuse files into the project where you want to use Fuse.
 
-```text
-skill.md
+```bash
+git clone https://github.com/taekwonv/fuse-skill.git
+cd fuse-skill
 ```
 
-Install it where your agent expects reusable skills, commands, or prompts.
-
 ### Claude Code
+
+Install the Claude skill from `claude/fuse`.
 
 Project-level:
 
 ```bash
-mkdir -p .claude/skills/fuse
-cp skill.md .claude/skills/fuse/SKILL.md
+mkdir -p /path/to/your-project/.claude/skills
+cp -R claude/fuse /path/to/your-project/.claude/skills/fuse
 ```
 
 User-level:
 
 ```bash
-mkdir -p ~/.claude/skills/fuse
-cp skill.md ~/.claude/skills/fuse/SKILL.md
+mkdir -p ~/.claude/skills
+cp -R claude/fuse ~/.claude/skills/fuse
 ```
 
 ### Codex
 
+Install the Codex skill from `codex/fuse`.
+
 Project-level:
 
 ```bash
-mkdir -p .agents/skills/fuse
-cp skill.md .agents/skills/fuse/SKILL.md
+mkdir -p /path/to/your-project/.agents/skills
+cp -R codex/fuse /path/to/your-project/.agents/skills/fuse
 ```
 
 User-level:
 
 ```bash
-mkdir -p ~/.agents/skills/fuse
-cp skill.md ~/.agents/skills/fuse/SKILL.md
+mkdir -p ~/.agents/skills
+cp -R codex/fuse ~/.agents/skills/fuse
 ```
 
 ### Gemini CLI
 
-Create a Gemini custom command that reads `skill.md`:
+Install the Gemini command and context files from `gemini`.
+
+Project-level:
 
 ```bash
-mkdir -p .gemini/commands
-cat > .gemini/commands/fuse.toml <<'EOF2'
-description = "Run the Fuse multi-agent worktree workflow."
-prompt = """
-Read and follow ./skill.md.
-
-User arguments:
-{{args}}
-
-You are the orchestrator for this /fuse run. Parse the arguments, resolve the git repository root, ensure each selected worker agent creates its own private git worktree, collect reports and diffs, judge the results, and produce the requested final output.
-"""
-EOF2
+mkdir -p /path/to/your-project/.gemini/commands
+cp gemini/fuse.toml /path/to/your-project/.gemini/commands/fuse.toml
 ```
 
-Reload commands if needed:
+Then add the Fuse instructions to your project's `GEMINI.md`.
+
+If the project does not have a `GEMINI.md` yet:
+
+```bash
+cp gemini/GEMINI.md /path/to/your-project/GEMINI.md
+```
+
+If the project already has a `GEMINI.md`:
+
+```bash
+cat gemini/GEMINI.md >> /path/to/your-project/GEMINI.md
+```
+
+Reload Gemini commands if needed:
 
 ```text
 /commands reload
@@ -106,7 +115,32 @@ Reload commands if needed:
 
 ### Other agents
 
-Put `skill.md` wherever that agent stores reusable skills, commands, prompts, or project instructions. The agent must be able to read the file and follow it when the user invokes `/fuse`.
+Copy the appropriate Markdown instruction file into the place where that agent stores reusable skills, commands, prompts, or project instructions. The agent must be able to read the Fuse instructions when the user invokes `/fuse`.
+
+---
+
+## Repository Layout
+
+```text
+fuse-skill/
+  README.md
+  LICENSE
+  universal_SKILL.md
+
+  claude/
+    fuse/
+      SKILL.md
+
+  codex/
+    fuse/
+      SKILL.md
+
+  gemini/
+    GEMINI.md
+    fuse.toml
+```
+
+Use the `claude/`, `codex/`, or `gemini/` directory depending on the agent you want to install Fuse into.
 
 ---
 
@@ -271,122 +305,6 @@ If these files are tracked by git, they naturally appear in each worker worktree
 
 ```text
 /fuse agents: claude,codex copy-docs: AGENTS.md,CLAUDE.md task: ...
-```
-
----
-
-## Copy/Paste Adaptation Prompts
-
-Use these prompts if you want Claude, Codex, or Gemini to convert `skill.md` into the exact native format for that agent.
-
-### Adapt for Claude Code
-
-Paste this into Claude Code from the repository root:
-
-```text
-You are adapting ./skill.md into a Claude Code skill.
-
-Source file:
-- ./skill.md
-
-Target file:
-- ./.claude/skills/fuse/SKILL.md
-
-Requirements:
-1. Create a valid Claude Code skill named "fuse".
-2. Add any Claude Code skill metadata/frontmatter required by the current Claude Code skill format.
-3. Preserve the Fuse workflow exactly:
-   - the current Claude session is the orchestrator when /fuse is invoked;
-   - each selected worker agent must create its own private git worktree;
-   - workers must never share a worktree;
-   - workers must never directly modify the original invocation directory;
-   - native files such as CLAUDE.md, AGENTS.md, and GEMINI.md remain native to each agent;
-   - do not introduce a .fuse/agents convention.
-4. Keep the source filename references as skill.md.
-5. Keep the skill instruction-only unless a script is absolutely required.
-6. Do not claim support for agent CLIs that are not installed.
-7. After writing the file, summarize exactly what changed.
-```
-
-### Adapt for Codex
-
-Paste this into Codex from the repository root:
-
-```text
-You are adapting ./skill.md into a Codex skill.
-
-Source file:
-- ./skill.md
-
-Target file:
-- ./.agents/skills/fuse/SKILL.md
-
-Requirements:
-1. Create a valid Codex skill named "fuse".
-2. Add Codex-compatible skill metadata/frontmatter, including name and description if required by the current Codex skill format.
-3. Preserve the Fuse workflow exactly:
-   - the current Codex session is the orchestrator when $fuse or /fuse is invoked;
-   - each selected worker agent must create its own private git worktree;
-   - workers must never share a worktree;
-   - workers must never directly modify the original invocation directory;
-   - native files such as AGENTS.md, CLAUDE.md, and GEMINI.md remain native to each agent;
-   - do not introduce a .fuse/agents convention.
-4. Use $fuse examples for Codex CLI/IDE, while noting that some environments may expose it as /fuse.
-5. Keep the source filename references as skill.md.
-6. Keep the skill instruction-only unless a script is absolutely required.
-7. Do not claim that model hints are enforceable unless the selected CLI actually supports them.
-8. After writing the file, summarize exactly what changed.
-```
-
-### Adapt for Gemini CLI
-
-Paste this into Gemini CLI from the repository root:
-
-```text
-You are adapting ./skill.md into a Gemini CLI custom command.
-
-Source file:
-- ./skill.md
-
-Target file:
-- ./.gemini/commands/fuse.toml
-
-Requirements:
-1. Create a valid Gemini CLI custom command named /fuse.
-2. Use TOML format.
-3. Include a concise description.
-4. The command prompt must instruct Gemini to read and follow ./skill.md.
-5. The command prompt must pass user-provided command arguments with {{args}}.
-6. Preserve the Fuse workflow exactly:
-   - the current Gemini session is the orchestrator when /fuse is invoked;
-   - each selected worker agent must create its own private git worktree;
-   - workers must never share a worktree;
-   - workers must never directly modify the original invocation directory;
-   - native files such as GEMINI.md, AGENTS.md, and CLAUDE.md remain native to each agent;
-   - do not introduce a .fuse/agents convention.
-7. Keep the source filename references as skill.md.
-8. Do not claim that Gemini can enforce another agent's model selection unless that external CLI supports it.
-9. After writing the file, summarize exactly what changed.
-```
-
----
-
-## Recommended Repository Layout
-
-```text
-fuse/
-  README.md
-  skill.md
-  LICENSE
-```
-
-Optional examples:
-
-```text
-examples/
-  claude/SKILL.md
-  codex/SKILL.md
-  gemini/fuse.toml
 ```
 
 ---
