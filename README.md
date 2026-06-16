@@ -7,24 +7,24 @@ Instead of asking one model or agent to solve a task once, Fuse sends the same t
 This is useful because different agents often have different strengths. One may produce the cleanest architecture, another may write better tests, and another may catch edge cases. Fuse turns those differences into an advantage.
 
 ```text
-User
-  |
-  |  /fuse agents: claude,codex,gemini task: ...
-  v
-Orchestrator agent
-  |
-  +-- Claude worker  -> private git worktree -> patch + FUSE_REPORT.md
-  +-- Codex worker   -> private git worktree -> patch + FUSE_REPORT.md
-  +-- Gemini worker  -> private git worktree -> patch + FUSE_REPORT.md
-  |
-  v
-Judge / optional peer review
-  |
-  v
-Integrator
-  |
-  v
-Best final result
+                 User task
+                    |
+                    v
+            Orchestrator agent
+                    |
+       +------------+------------+
+       |            |            |
+       v            v            v
+   Claude worker  Codex worker  Gemini worker
+   private tree   private tree   private tree
+       |            |            |
+       +------------+------------+
+                    |
+                    v
+          Judge + final integrator
+                    |
+                    v
+             Best final result
 ```
 
 The most important rule:
