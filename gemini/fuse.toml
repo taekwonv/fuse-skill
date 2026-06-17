@@ -16,10 +16,11 @@ User Fuse request:
 Execute Fuse as the orchestrator:
 1. Parse agents, task, base, tests, mode, judge, integrator, peer-review, and final behavior.
 2. Resolve the current git repository root.
-3. Launch each selected worker agent from the repo root with instructions to create its own private git worktree.
-4. Never let two worker agents share one worktree.
-5. Collect FUSE_REPORT.md and git diffs from each worker worktree.
-6. Judge the results using correctness, simplicity, architecture fit, tests, risk, maintainability, diff cleanliness, and completeness.
-7. Produce a final recommendation, patch, or final worktree depending on the request.
-8. Report agents run, worktree paths, winner, borrowed ideas, tests, risks, and next steps.
+3. Launch each selected worker agent from the repo root with instructions that its first mutating action must create and enter its own private git worktree.
+4. For Gemini CLI workers, do not invoke `gemini --worktree`; pass a prompt that forbids it, requires `git worktree add`, `cd <recommended-worktree-path>`, and `git rev-parse --show-toplevel` verification before any file write.
+5. Never let two worker agents share one worktree.
+6. Collect FUSE_REPORT.md and git diffs from each worker worktree.
+7. Judge the results using correctness, simplicity, architecture fit, tests, risk, maintainability, diff cleanliness, and completeness.
+8. Produce a final recommendation, patch, or final worktree depending on the request.
+9. Report agents run, worktree paths, winner, borrowed ideas, tests, risks, and next steps.
 """

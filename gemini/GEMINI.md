@@ -114,6 +114,8 @@ If a CLI agent does not support setting that model from the command line, do not
 10. If instruction files are untracked, copy them only when the user explicitly provides `copy-docs:`.
 11. The original repo directory is reserved for orchestration, judging, and final user-approved integration.
 12. Any final implementation should be produced in a dedicated final worktree unless the user explicitly asks to apply it to the original directory.
+13. Worker-owned worktrees are required: the orchestrator should not pre-create worker worktrees. Each worker must create and enter its own worktree before any file write.
+14. Gemini CLI workers need an explicit guard: do not launch Gemini with `gemini --worktree`, and instruct Gemini that its first mutating action must be `git worktree add` followed by changing into the recommended worktree and verifying the git root.
 
 ---
 
@@ -238,13 +240,15 @@ implement | review | plan | debug
 Each worker must create `FUSE_REPORT.md` in its own worktree.
 ```
 
-### Step 5 — Launch each worker agent independently
+### Step 5 - Launch each worker agent independently
 
 For each selected worker, start a separate agent session from `FUSE_ROOT` and give it the worker prompt below.
 
-The worker is responsible for creating its own private worktree and moving into it before modifying files.
+The worker is responsible for creating its own private worktree and moving into it before modifying files. The orchestrator should not pre-create the worker worktree.
 
 The orchestrator may provide the recommended worktree path and branch name, but must not instruct two agents to use the same path.
+
+Gemini CLI special case: still let Gemini own its worktree, but make the prompt stricter. Do not invoke `gemini --worktree`; that Gemini-native flag creates a Gemini-managed worktree under `.gemini/worktrees` relative to the git common directory and can dirty the original checkout. Launch Gemini normally from `FUSE_ROOT` and require it to create the recommended git worktree, `cd` into it, and verify `git rev-parse --show-toplevel` before any file write.
 
 ### Step 6 — Wait for worker reports
 
@@ -331,6 +335,7 @@ Important:
 - You are currently being launched from the original repository root: <FUSE_ROOT>.
 - Do not modify this original directory directly.
 - You must create and use your own private git worktree before editing files.
+- Your first mutating action must be creating the private worktree and moving into it. Do not create notes, reports, temp files, installs, package caches, or `FUSE_REPORT.md` in <FUSE_ROOT>.
 - No other worker agent may use your worktree.
 - Do not assume shared state with other workers.
 - Read your native instruction files using your own normal rules. For example, if you are Claude Code, follow your CLAUDE.md behavior; if you are Codex, follow your AGENTS.md behavior; if you are Gemini CLI, follow your GEMINI.md behavior. Fuse does not provide separate agent-md files.
@@ -345,11 +350,20 @@ Run information:
 - Recommended branch: fuse/<run-id>/<agent-name>
 - Recommended worktree path: <worktree-parent>/<run-id>/<agent-name>
 
-First, create your private worktree:
+First, create your private worktree and move into it before any other file write:
 
   git worktree add -b fuse/<run-id>/<agent-name> <recommended-worktree-path> <base-ref>
+  cd <recommended-worktree-path>
+  git rev-parse --show-toplevel
 
-Then move into that worktree and perform the task there.
+Normalize the printed git root and `<recommended-worktree-path>` to absolute paths before comparing them. They must refer to the same directory, allowing normal differences such as path separators, casing on case-insensitive filesystems, or resolved symlinks. If they do not refer to the same directory, stop and report failure without editing files.
+
+Gemini CLI worker extra requirements:
+- Do not use the Gemini CLI `--worktree` flag for this Fuse task. Use `git worktree add` exactly as above.
+- Do not write `FUSE_REPORT.md` or any other file until after the git root verification passes.
+- If a tool tries to write under `<FUSE_ROOT>`, reject that action and continue only after entering `<recommended-worktree-path>`.
+
+Then perform the task inside that worktree.
 
 Task:
 <task>
@@ -412,7 +426,10 @@ codex "<worker prompt>"
 
 ```bash
 cd <FUSE_ROOT>
-gemini "<worker prompt>"
+gemini "<worker prompt with the Gemini CLI extra requirements>"
+# Do not use: gemini --worktree
+# For headless automation only, allow the required shell/file tools explicitly, e.g.:
+# gemini --approval-mode=yolo -p "<worker prompt with the Gemini CLI extra requirements>"
 ```
 
 ```bash
@@ -654,7 +671,7 @@ When in doubt, do the simplest correct version:
 ```text
 1. Parse agents and task.
 2. Resolve current git repo root.
-3. For each agent, launch it from the repo root with a prompt requiring it to create its own private worktree.
+3. For each agent, launch it from the repo root with a prompt requiring its first mutating action to create and enter its own private worktree; for Gemini, explicitly forbid `gemini --worktree` and require git-root verification before any write.
 4. Wait for FUSE_REPORT.md and diffs.
 5. Compare results with the judge rubric.
 6. Create a final integration worktree.

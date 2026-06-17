@@ -186,7 +186,7 @@ $fuse invoked in Codex   -> Codex is the orchestrator
 
 The orchestrator parses the request, identifies the repo root, coordinates workers, judges outputs, and produces the final result.
 
-### 2. Each worker creates its own private worktree
+### 2. Each worker creates and enters its own private worktree
 
 If the user runs Fuse from:
 
@@ -202,7 +202,9 @@ then workers should create separate sibling worktrees such as:
 /home/user/my_code-fuse-worktrees/<run-id>/gemini
 ```
 
-A worker must only modify its own worktree.
+A worker must only modify its own worktree. The orchestrator does not need to pre-create worker worktrees, but the worker's first mutating action must be creating the worktree and changing into it.
+
+Gemini CLI needs one extra guard when it is used as a worker: do not launch it with `gemini --worktree`. That Gemini-native flag creates a Gemini-managed worktree under `.gemini/worktrees` relative to the git common directory, which can dirty the original checkout. Launch Gemini normally from the repo root and include prompt instructions that forbid writes until `git worktree add`, `cd <worker-worktree>`, and `git rev-parse --show-toplevel` verification have succeeded.
 
 ### 3. Each worker produces a report
 
@@ -314,6 +316,7 @@ If these files are tracked by git, they naturally appear in each worker worktree
 - Run Fuse only inside a git repository.
 - Review final diffs before merging.
 - Do not let multiple workers edit the same worktree.
+- For Gemini workers, do not use `gemini --worktree`; make the worker create the recommended Fuse worktree with `git worktree add` and verify the git root before writing files.
 - Do not assume all agent CLIs support the same model-selection flags.
 - Do not claim a worker used a model unless the CLI confirmed it.
 - Be careful with private code when routing prompts through remote model providers.
